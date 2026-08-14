@@ -1,199 +1,150 @@
-#ifndef L1TCaloAnalyzer_H
-#define L1TCaloAnalyzer_H
+/*
+ * Description:
+ *   ROOT analyzer for every link boundary in the Phase-2 GCT emulator chain.
+ *
+ *   The analyzer reads all six PreIP1 collections, all six PostIP1
+ *   collections, all three routed PreIP2 collections, and all three PostIP2
+ *   collections.  It writes one TTree entry per 576-bit link.  Every entry
+ *   contains all eighteen 32-bit raw chunks plus decoded object vectors when
+ *   the link has an unambiguous firmware layout.
+ *
+ *   Keeping one entry per link makes the output convenient for link-by-link
+ *   firmware comparison while preserving the exact raw payload at every
+ *   processing boundary.
+ */
 
+#ifndef L1Trigger_L1CaloPhase2Analyzer_L1TCaloAnalyzer_h
+#define L1Trigger_L1CaloPhase2Analyzer_L1TCaloAnalyzer_h
 
-// system include files
-#include <memory>
-#include <unistd.h>
+#include <ap_int.h>
 
-
-#include <iostream>
-#include <fstream>
+#include <cstdint>
+#include <string>
 #include <vector>
-
-#include "TROOT.h"
-#include "TTree.h"
-#include "TFile.h"
-#include "TH2F.h"
-
-// user include files
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-//#include "FWCore/Framework/interface/EDAnalyzer.h"
-#include "FWCore/Framework/interface/one/EDAnalyzer.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
-
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
-
-#include "FWCore/Utilities/interface/InputTag.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
-
-// GCT and RCT data formats
-#include "DataFormats/L1CaloTrigger/interface/L1CaloCollections.h"
-#include "DataFormats/L1GlobalCaloTrigger/interface/L1GctCollections.h"
-#include "DataFormats/TauReco/interface/PFTau.h"
-#include "DataFormats/TauReco/interface/PFTauDiscriminator.h"
-#include "DataFormats/L1Trigger/interface/L1JetParticle.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
-#include "DataFormats/PatCandidates/interface/Tau.h"
-#include "DataFormats/PatCandidates/interface/Jet.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
-#include "DataFormats/L1THGCal/interface/HGCalTower.h"
-
-#include "DataFormats/TauReco/interface/BaseTau.h"
-#include "DataFormats/TauReco/interface/PFTauFwd.h"
-#include "DataFormats/TauReco/interface/PFTauTagInfo.h"
-
-#include <memory>
-#include <math.h>
-#include <vector>
-#include <list>
-#include <TLorentzVector.h>
-
-#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
-#include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
-#include "CondFormats/L1TObjects/interface/L1CaloHcalScale.h"
-#include "CondFormats/DataRecord/interface/L1CaloHcalScaleRcd.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "L1Trigger/L1TGlobal/interface/TriggerMenuFwd.h"
-#include "DataFormats/L1Trigger/interface/Tau.h"
-#include "DataFormats/L1CaloTrigger/interface/L1CaloRegion.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloCrystalCluster.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloPFCluster.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/Phase2L1CaloJet.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedL1CaloJet.h"
-#include "DataFormats/L1THGCal/interface/HGCalTower.h"
+#include "DataFormats/L1TCalorimeterPhase2/interface/GCT_output.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/RCT_output.h"
-
-#ifdef __MAKECINT__
-// #pragma extra_include "TLorentzVector.h";
-#pragma link C++ class std::vector<TLorentzVector>;
-#endif
-
-//
-// class declaration
-//
-using std::vector;
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/EDGetToken.h"
+#include "TTree.h"
 
 class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
+public:
+  explicit L1TCaloAnalyzer(const edm::ParameterSet&);
+  ~L1TCaloAnalyzer() override = default;
 
- public:
-  
-  // Constructor
-  L1TCaloAnalyzer(const edm::ParameterSet& ps);
-  
-  // Destructor
-  virtual ~L1TCaloAnalyzer();
+  static void fillDescriptions(edm::ConfigurationDescriptions&);
 
-  edm::Service<TFileService> tfs_;
+private:
+  using RCTCollection = l1tp2::rctOutputLinkCollection;
+  using GCTCollection = l1tp2::gctOutputLinkCollection;
+  using LinkWord = ap_uint<576>;
 
-  std::vector<int> *linkOut0 = new std::vector<int>;
-  std::vector<int> *linkOut1 = new std::vector<int>;
-  std::vector<int> *linkOut2 = new std::vector<int>;
-  std::vector<int> *linkOut3 = new std::vector<int>;
+  struct RCTSource {
+    edm::EDGetTokenT<RCTCollection> token;
+    std::string name;
+    int regionIndex;
+  };
 
-  // Vectors of vectors, where each element is a per-card vector
-  // Cluster branches
-  std::vector<std::vector<int>> *seed_pt = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *cluster_pt = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *cluster_eta = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *cluster_phi = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *et5x5 = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *wps = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *timing = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *spike = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *satur = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *brems = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *spare = new std::vector<std::vector<int>>;
-  // Tower branches
-  std::vector<std::vector<int>> *tower_et = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *tower_eta = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *tower_phi = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *hoe = new std::vector<std::vector<int>>;
-  std::vector<std::vector<int>> *fb = new std::vector<std::vector<int>>;
+  struct GCTSource {
+    edm::EDGetTokenT<GCTCollection> token;
+    std::string stage;
+    std::string name;
+    int regionIndex;
+  };
 
-  // Per-card vectors (clusters)
-  std::vector<int> *RCT_seed_pt = new std::vector<int>;
-  std::vector<int> *RCT_cluster_pt = new std::vector<int>;
-  std::vector<int> *RCT_cluster_eta = new std::vector<int>;
-  std::vector<int> *RCT_cluster_phi = new std::vector<int>;
-  std::vector<int> *RCT_et5x5 = new std::vector<int>;
-  std::vector<int> *RCT_wps = new std::vector<int>;
-  std::vector<int> *RCT_timing = new std::vector<int>;
-  std::vector<int> *RCT_spike = new std::vector<int>;
-  std::vector<int> *RCT_satur = new std::vector<int>;
-  std::vector<int> *RCT_brems = new std::vector<int>;
-  std::vector<int> *RCT_spare = new std::vector<int>;
+  void beginJob() override;
+  void analyze(const edm::Event&, const edm::EventSetup&) override;
 
-  // Per-card vectors (towers)
-  std::vector<int> *RCT_tower_et = new std::vector<int>;
-  std::vector<int> *RCT_tower_eta = new std::vector<int>;
-  std::vector<int> *RCT_tower_phi = new std::vector<int>;
-  std::vector<int> *RCT_hoe = new std::vector<int>;
-  std::vector<int> *RCT_fb = new std::vector<int>;
+  void fillPreIP1Collection(const RCTCollection&, const RCTSource&);
+  void fillGCTCollection(const GCTCollection&, const GCTSource&);
+  void prepareLink(const std::string& stage,
+                   const std::string& regionName,
+                   int regionIndex,
+                   int linkIndex,
+                   const LinkWord& word);
+  void decodePreIP1(const LinkWord& word, int linkIndex);
+  void decodePostIP1(const LinkWord& word, int linkIndex);
+  void decodePreIP2(const LinkWord& word, int linkIndex);
+  void decodePostIP2(const LinkWord& word, int linkIndex);
 
-  TTree* linkTree;
+  void appendObject(const std::string& type,
+                    int index,
+                    int energy = -1,
+                    int emEnergy = -1,
+                    int seedEnergy = -1,
+                    int eta = -999,
+                    int phi = -999,
+                    int hoe = -1,
+                    int flags = -1,
+                    int ratio = -1,
+                    int et5x5 = -1,
+                    int quality = -1,
+                    int timing = -1,
+                    int brems = -1,
+                    int ex = -1,
+                    int ey = -1,
+                    int ht = -1);
 
-  int run, lumi, event;
+  static int signExtend(unsigned int value, unsigned int width);
+  static std::string preIP2RouteSource(int linkIndex);
+  static int preIP2RouteLink(int linkIndex);
 
- protected:
-  // Analyze
-  void analyze(const edm::Event& evt, const edm::EventSetup& es);
-  
-  // BeginJob
-  void beginJob(const edm::EventSetup &es);
-  
-  // EndJob
-  void endJob(void);
+  std::vector<RCTSource> preIP1Sources_;
+  std::vector<GCTSource> gctSources_;
 
-  
- private:
-  // ----------member data ---------------------------
+  edm::Service<TFileService> fileService_;
+  TTree* linkTree_{nullptr};
 
-  edm::ESGetToken<CaloTPGTranscoder, CaloTPGRecord> decoderToken_;
+  // Event and link identity.
+  std::uint32_t run_{0};
+  std::uint32_t lumi_{0};
+  std::uint64_t event_{0};
+  std::string stage_;
+  std::string regionName_;
+  int regionIndex_{-1};
+  int linkIndex_{-1};
+  std::string linkType_;
 
-  edm::ESGetToken<CaloGeometry, CaloGeometryRecord> caloGeometryToken_;
-  edm::ESGetToken<HcalTopology, HcalRecNumberingRecord> hbTopologyToken_;
+  // Metadata specific to routed/pre-IP1 links.
+  int phiSlot_{-1};
+  int etaSide_{0};
+  int ip1RegionSlot_{-1};
+  int localLinkIndex_{-1};
+  int rctPairIndex_{-1};
+  int rctCollectionIndex_{-1};
+  std::string routeSource_;
+  int routeSourceLink_{-1};
+  bool stSlotTransposed_{false};
 
-  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link0Src_;
-  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link1Src_;
-  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link2Src_;
-  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link3Src_;
+  // Raw payload: 18 x 32 bits = 576 bits.
+  std::vector<std::uint32_t> rawWord32_;
 
-  std::string folderName_;
-
+  // Aligned decoded-object vectors.  Unused fields are filled with sentinels.
+  std::vector<std::string> objectType_;
+  std::vector<int> objectIndex_;
+  std::vector<int> energy_;
+  std::vector<int> emEnergy_;
+  std::vector<int> seedEnergy_;
+  std::vector<int> eta_;
+  std::vector<int> phi_;
+  std::vector<int> hoe_;
+  std::vector<int> flags_;
+  std::vector<int> ratio_;
+  std::vector<int> et5x5_;
+  std::vector<int> quality_;
+  std::vector<int> timing_;
+  std::vector<int> brems_;
+  std::vector<int> ex_;
+  std::vector<int> ey_;
+  std::vector<int> ht_;
 };
-
-void getIP3OutputClusters(
-  ap_uint<576> Data,
-  std::vector<int>* RCT_seed_pt,
-  std::vector<int>* RCT_pt,
-  std::vector<int>* RCT_eta,
-  std::vector<int>* RCT_phi,
-  std::vector<int>* RCT_et5x5,
-  std::vector<int>* RCT_wps,
-  std::vector<int>* RCT_timing,
-  std::vector<int>* RCT_spike,
-  std::vector<int>* RCT_satur,
-  std::vector<int>* RCT_brems,
-  std::vector<int>* RCT_spare
-);
-
-void getIP3OutputTowers(
-  ap_uint<576> Data,
-  int whichLink,
-  std::vector<int>* RCT_et,
-  std::vector<int>* RCT_eta,
-  std::vector<int>* RCT_phi,
-  std::vector<int>* RCT_hoe,
-  std::vector<int>* RCT_fb
-);
 
 #endif
