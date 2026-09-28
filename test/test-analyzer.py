@@ -42,7 +42,7 @@ process.load("L1Trigger.L1CaloTrigger.l1tPhase2RCTEmulatorProducer_cfi")
 process.L1simulation_step = cms.Path(process.l1tPhase2RCTEmulatorProducer)
 
 # Run the analyzer
-process.load('L1Trigger.L1CaloPhase2Analyzer.l1TCaloAnalyzer_cfi')
+process.load('L1Trigger.L1CaloPhase2Analyzer.l1TRCTAnalyzer_cfi')
 
 process.RCT = cms.Path( process.l1tPhase2RCTEmulatorProducer*process.l1NtupleProducer )
 
