@@ -82,11 +82,6 @@
 //
 using std::vector;
 
-namespace p2CaloAnalyzer {
-
-static constexpr int kOutputLinks = 6;
-static constexpr int kWordsPerLink = 9;
-
 class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 
  public:
@@ -99,10 +94,52 @@ class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 
   edm::Service<TFileService> tfs_;
 
-  std::vector<uint64_t>* *linkOutSums = new std::vector<uint64_t>[kOutputLinks];
-  std::vector<uint64_t>* *linkOutGT = new std::vector<uint64_t>[kOutputLinks];
+  std::vector<int> *linkOut0 = new std::vector<int>;
+  std::vector<int> *linkOut1 = new std::vector<int>;
+  std::vector<int> *linkOut2 = new std::vector<int>;
+  std::vector<int> *linkOut3 = new std::vector<int>;
 
-  TTree* gctsTree;
+  // Vectors of vectors, where each element is a per-card vector
+  // Cluster branches
+  std::vector<std::vector<int>> *seed_pt = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *cluster_pt = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *cluster_eta = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *cluster_phi = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *et5x5 = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *wps = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *timing = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *spike = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *satur = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *brems = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *spare = new std::vector<std::vector<int>>;
+  // Tower branches
+  std::vector<std::vector<int>> *tower_et = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *tower_eta = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *tower_phi = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *hoe = new std::vector<std::vector<int>>;
+  std::vector<std::vector<int>> *fb = new std::vector<std::vector<int>>;
+
+  // Per-card vectors (clusters)
+  std::vector<int> *RCT_seed_pt = new std::vector<int>;
+  std::vector<int> *RCT_cluster_pt = new std::vector<int>;
+  std::vector<int> *RCT_cluster_eta = new std::vector<int>;
+  std::vector<int> *RCT_cluster_phi = new std::vector<int>;
+  std::vector<int> *RCT_et5x5 = new std::vector<int>;
+  std::vector<int> *RCT_wps = new std::vector<int>;
+  std::vector<int> *RCT_timing = new std::vector<int>;
+  std::vector<int> *RCT_spike = new std::vector<int>;
+  std::vector<int> *RCT_satur = new std::vector<int>;
+  std::vector<int> *RCT_brems = new std::vector<int>;
+  std::vector<int> *RCT_spare = new std::vector<int>;
+
+  // Per-card vectors (towers)
+  std::vector<int> *RCT_tower_et = new std::vector<int>;
+  std::vector<int> *RCT_tower_eta = new std::vector<int>;
+  std::vector<int> *RCT_tower_phi = new std::vector<int>;
+  std::vector<int> *RCT_hoe = new std::vector<int>;
+  std::vector<int> *RCT_fb = new std::vector<int>;
+
+  TTree* linkTree;
 
   int run, lumi, event;
 
@@ -120,11 +157,17 @@ class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
  private:
   // ----------member data ---------------------------
 
-  std::array<edm::EDGetTokenT<std::vector<uint64_t>>, kOutputLinks> outputSumsLinkTokens_;
-  std::array<edm::EDGetTokenT<std::vector<uint64_t>>, kOutputLinks> outputGTLinkTokens_;
+  edm::ESGetToken<CaloTPGTranscoder, CaloTPGRecord> decoderToken_;
 
-  std::array<edm::Handle<std::vector<uint64_t>>, kOutputLinks> outputSumsLinkHandles_;
-  std::array<edm::Handle<std::vector<uint64_t>>, kOutputLinks> outputGTLinkHandles_;
+  edm::ESGetToken<CaloGeometry, CaloGeometryRecord> caloGeometryToken_;
+  edm::ESGetToken<HcalTopology, HcalRecNumberingRecord> hbTopologyToken_;
+
+  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link0Src_;
+  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link1Src_;
+  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link2Src_;
+  edm::EDGetTokenT<l1tp2::rctOutputLinkCollection> link3Src_;
+
+  std::string folderName_;
 
 };
 
@@ -152,7 +195,5 @@ void getIP3OutputTowers(
   std::vector<int>* RCT_hoe,
   std::vector<int>* RCT_fb
 );
-
-} // namespace p2CaloAnalyzer
 
 #endif
