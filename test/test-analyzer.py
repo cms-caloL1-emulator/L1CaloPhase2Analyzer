@@ -48,7 +48,7 @@ process.RCT = cms.Path( process.l1tPhase2RCTEmulatorProducer*process.l1NtuplePro
 
 # output file
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string('analyzer_noClusters.root')
+    fileName = cms.string('analyzer.root')
 )
 
 process.schedule = cms.Schedule(process.RCT)
