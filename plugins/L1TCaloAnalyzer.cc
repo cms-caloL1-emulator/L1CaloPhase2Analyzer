@@ -130,4 +130,4 @@ L1TCaloAnalyzer::~L1TCaloAnalyzer(){
 
 }
 
-DEFINE_FWK_MODULE(L1TCaloAnalyzer);
+DEFINE_FWK_MODULE(p2CaloAnalyzer::L1TCaloAnalyzer);

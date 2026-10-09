@@ -1,5 +1,5 @@
-#ifndef L1TCaloAnalyzer_H
-#define L1TCaloAnalyzer_H
+#ifndef L1TRCTCaloAnalyzer_H
+#define L1TRCTCaloAnalyzer_H
 
 
 // system include files
@@ -82,15 +82,15 @@
 //
 using std::vector;
 
-class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
+class L1TRCTCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 
  public:
   
   // Constructor
-  L1TCaloAnalyzer(const edm::ParameterSet& ps);
+  L1TRCTCaloAnalyzer(const edm::ParameterSet& ps);
   
   // Destructor
-  virtual ~L1TCaloAnalyzer();
+  virtual ~L1TRCTCaloAnalyzer();
 
   edm::Service<TFileService> tfs_;
 

@@ -1,5 +1,5 @@
 /*
- *  \file L1TCaloAnalyzer.cc
+ *  \file L1TRCTCaloAnalyzer.cc
  *  Authors S. Kwan, P. Das, I. Ojalvo, R. Simeon
  */
 
@@ -54,7 +54,7 @@
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
-#include "L1Trigger/L1CaloPhase2Analyzer/interface/L1TCaloAnalyzer.h"
+#include "L1Trigger/L1CaloPhase2Analyzer/interface/L1TRCTCaloAnalyzer.h"
 #include "DataFormats/Math/interface/deltaR.h"
 
 
@@ -66,7 +66,7 @@
 
 using namespace edm;
 
-L1TCaloAnalyzer::L1TCaloAnalyzer( const ParameterSet & cfg ) :
+L1TRCTCaloAnalyzer::L1TRCTCaloAnalyzer( const ParameterSet & cfg ) :
   decoderToken_(esConsumes<CaloTPGTranscoder, CaloTPGRecord>(edm::ESInputTag("", ""))),
   caloGeometryToken_(esConsumes<CaloGeometry, CaloGeometryRecord>(edm::ESInputTag("", ""))),
   hbTopologyToken_(esConsumes<HcalTopology, HcalRecNumberingRecord>(edm::ESInputTag("", ""))),
@@ -112,10 +112,10 @@ L1TCaloAnalyzer::L1TCaloAnalyzer( const ParameterSet & cfg ) :
 
   }
 
-void L1TCaloAnalyzer::beginJob( const EventSetup & es) {
+void L1TRCTCaloAnalyzer::beginJob( const EventSetup & es) {
 }
 
-void L1TCaloAnalyzer::analyze( const Event& evt, const EventSetup& es )
+void L1TRCTCaloAnalyzer::analyze( const Event& evt, const EventSetup& es )
  {
 
   run = evt.id().run();
@@ -252,10 +252,10 @@ void L1TCaloAnalyzer::analyze( const Event& evt, const EventSetup& es )
  }
 
 
-void L1TCaloAnalyzer::endJob() {
+void L1TRCTCaloAnalyzer::endJob() {
 }
 
-L1TCaloAnalyzer::~L1TCaloAnalyzer(){
+L1TRCTCaloAnalyzer::~L1TRCTCaloAnalyzer(){
 }
 
 //////////////////////////// Utility functions ///////////////////////////////
@@ -365,4 +365,4 @@ void getIP3OutputTowers(
 
 }
 
-DEFINE_FWK_MODULE(L1TCaloAnalyzer);
+DEFINE_FWK_MODULE(L1TRCTCaloAnalyzer);
