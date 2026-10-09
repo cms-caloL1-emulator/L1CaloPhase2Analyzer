@@ -1,4 +1,7 @@
-import FWCore.ParameterSet.Config as cms
+"""Description:
+Configure the link-level analyzer for all four GCT processing boundaries:
+PreIP1, PostIP1, routed PreIP2, and PostIP2.
+"""
 
 l1LinkProducer = cms.EDAnalyzer("L1TCaloAnalyzer",
                                   outputSumsLinks = cms.VInputTag(

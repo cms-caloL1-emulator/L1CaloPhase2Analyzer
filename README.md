@@ -69,6 +69,9 @@
    cd L1Trigger/L1CaloPhase2Analyzer/test/
    cmsRun test-analyzer.py
    ```
+   This runs the RCT-only `L1TRCTAnalyzer` and writes the event-level branches used by
+   `compare_old_new.py`. For GCT PreIP1/PostIP1/PreIP2/PostIP2 link output, run
+   `test_gct_chain.py`, which uses the separate `L1TCaloAnalyzer` plugin.
    To get the ntuple of the old emulator's cluster outputs (in the same directory):
    ```
    cmsRun test-old-analyzer.py

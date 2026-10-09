@@ -1,86 +1,39 @@
-#ifndef L1TCaloAnalyzer_H
-#define L1TCaloAnalyzer_H
+/*
+ * Description:
+ *   ROOT analyzer for every link boundary in the Phase-2 GCT emulator chain.
+ *
+ *   The analyzer reads all six PreIP1 collections, all six PostIP1
+ *   collections, all three routed PreIP2 collections, and all three PostIP2
+ *   collections.  It writes one TTree entry per 576-bit link.  Every entry
+ *   contains all eighteen 32-bit raw chunks plus decoded object vectors when
+ *   the link has an unambiguous firmware layout.
+ *
+ *   Keeping one entry per link makes the output convenient for link-by-link
+ *   firmware comparison while preserving the exact raw payload at every
+ *   processing boundary.
+ */
 
+#ifndef L1Trigger_L1CaloPhase2Analyzer_L1TCaloAnalyzer_h
+#define L1Trigger_L1CaloPhase2Analyzer_L1TCaloAnalyzer_h
 
-// system include files
-#include <memory>
-#include <unistd.h>
+#include <ap_int.h>
 
-
-#include <iostream>
-#include <fstream>
+#include <cstdint>
+#include <string>
 #include <vector>
-
-#include "TROOT.h"
-#include "TTree.h"
-#include "TFile.h"
-#include "TH2F.h"
-
-// user include files
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-//#include "FWCore/Framework/interface/EDAnalyzer.h"
-#include "FWCore/Framework/interface/one/EDAnalyzer.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
-
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
-
-#include "FWCore/Utilities/interface/InputTag.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
-
-// GCT and RCT data formats
-#include "DataFormats/L1CaloTrigger/interface/L1CaloCollections.h"
-#include "DataFormats/L1GlobalCaloTrigger/interface/L1GctCollections.h"
-#include "DataFormats/TauReco/interface/PFTau.h"
-#include "DataFormats/TauReco/interface/PFTauDiscriminator.h"
-#include "DataFormats/L1Trigger/interface/L1JetParticle.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
-#include "DataFormats/PatCandidates/interface/Tau.h"
-#include "DataFormats/PatCandidates/interface/Jet.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidateFwd.h"
-#include "DataFormats/L1THGCal/interface/HGCalTower.h"
-
-#include "DataFormats/TauReco/interface/BaseTau.h"
-#include "DataFormats/TauReco/interface/PFTauFwd.h"
-#include "DataFormats/TauReco/interface/PFTauTagInfo.h"
-
-#include <memory>
-#include <math.h>
-#include <vector>
-#include <list>
-#include <TLorentzVector.h>
-
-#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
-#include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
-#include "CondFormats/L1TObjects/interface/L1CaloHcalScale.h"
-#include "CondFormats/DataRecord/interface/L1CaloHcalScaleRcd.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "L1Trigger/L1TGlobal/interface/TriggerMenuFwd.h"
-#include "DataFormats/L1Trigger/interface/Tau.h"
-#include "DataFormats/L1CaloTrigger/interface/L1CaloRegion.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloCrystalCluster.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloPFCluster.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/Phase2L1CaloJet.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedL1CaloJet.h"
-#include "DataFormats/L1THGCal/interface/HGCalTower.h"
+#include "DataFormats/L1TCalorimeterPhase2/interface/GCT_output.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/RCT_output.h"
-
-#ifdef __MAKECINT__
-// #pragma extra_include "TLorentzVector.h";
-#pragma link C++ class std::vector<TLorentzVector>;
-#endif
-
-//
-// class declaration
-//
-using std::vector;
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/Utilities/interface/EDGetToken.h"
+#include "TTree.h"
 
 namespace p2CaloAnalyzer {
 

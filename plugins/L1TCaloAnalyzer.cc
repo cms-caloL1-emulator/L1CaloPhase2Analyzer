@@ -3,55 +3,106 @@
  *  Author R. Simeon
  */
 
-// system include files
-#include <ap_int.h>
+#include "L1Trigger/L1CaloPhase2Analyzer/interface/L1TCaloAnalyzer.h"
+
 #include <array>
-#include <cmath>
-// #include <cstdint>
-#include <iostream>
-#include <fstream>
-#include <memory>
-#include <vector>
-#include <TLorentzVector.h>
-#ifdef __MAKECINT__
-#pragma link C++ class vector<TLorentzVector>+;
-#endif
+#include <utility>
 
-// user include files
-#include "FWCore/Framework/interface/stream/EDProducer.h"
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/Framework/interface/EventSetup.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-
-#include "CalibFormats/CaloTPG/interface/CaloTPGTranscoder.h"
-#include "CalibFormats/CaloTPG/interface/CaloTPGRecord.h"
-#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
-#include "Geometry/EcalAlgo/interface/EcalBarrelGeometry.h"
-#include "Geometry/HcalTowerAlgo/interface/HcalTrigTowerGeometry.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
 #include "DataFormats/L1THGCal/interface/HGCalTower.h"
 #include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
 
+void L1TCaloAnalyzer::beginJob() {
+  linkTree_ = fileService_->make<TTree>("linkTree", "GCT links at PreIP1, PostIP1, PreIP2, and PostIP2");
 
-// ECAL TPs
-#include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
+  linkTree_->Branch("run", &run_);
+  linkTree_->Branch("lumi", &lumi_);
+  linkTree_->Branch("event", &event_);
+  linkTree_->Branch("stage", &stage_);
+  linkTree_->Branch("region_name", &regionName_);
+  linkTree_->Branch("region_index", &regionIndex_);
+  linkTree_->Branch("link_index", &linkIndex_);
+  linkTree_->Branch("link_type", &linkType_);
+  linkTree_->Branch("phi_slot", &phiSlot_);
+  linkTree_->Branch("eta_side", &etaSide_);
+  linkTree_->Branch("ip1_region_slot", &ip1RegionSlot_);
+  linkTree_->Branch("local_link_index", &localLinkIndex_);
+  linkTree_->Branch("rct_pair_index", &rctPairIndex_);
+  linkTree_->Branch("rct_collection_index", &rctCollectionIndex_);
+  linkTree_->Branch("route_source", &routeSource_);
+  linkTree_->Branch("route_source_link", &routeSourceLink_);
+  linkTree_->Branch("st_slot_transposed", &stSlotTransposed_);
+  linkTree_->Branch("raw_word32", &rawWord32_);
 
-// HCAL TPs
-#include "DataFormats/HcalDigi/interface/HcalTriggerPrimitiveDigi.h"
+  linkTree_->Branch("object_type", &objectType_);
+  linkTree_->Branch("object_index", &objectIndex_);
+  linkTree_->Branch("energy", &energy_);
+  linkTree_->Branch("em_energy", &emEnergy_);
+  linkTree_->Branch("seed_energy", &seedEnergy_);
+  linkTree_->Branch("eta", &eta_);
+  linkTree_->Branch("phi", &phi_);
+  linkTree_->Branch("hoe", &hoe_);
+  linkTree_->Branch("flags", &flags_);
+  linkTree_->Branch("ratio", &ratio_);
+  linkTree_->Branch("et5x5", &et5x5_);
+  linkTree_->Branch("quality", &quality_);
+  linkTree_->Branch("timing", &timing_);
+  linkTree_->Branch("brems", &brems_);
+  linkTree_->Branch("ex", &ex_);
+  linkTree_->Branch("ey", &ey_);
+  linkTree_->Branch("ht", &ht_);
+}
 
-// Output tower collection
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloCrystalCluster.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloTower.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/CaloPFCluster.h"
-#include "DataFormats/L1Trigger/interface/EGamma.h"
+void L1TCaloAnalyzer::analyze(const edm::Event& event, const edm::EventSetup&) {
+  run_ = event.id().run();
+  lumi_ = event.id().luminosityBlock();
+  event_ = event.id().event();
 
-#include "L1Trigger/L1CaloTrigger/interface/ParametricCalibration.h"
-#include "L1Trigger/L1TCalorimeter/interface/CaloTools.h"
+  for (const auto& source : preIP1Sources_) {
+    const auto handle = event.getHandle(source.token);
+    if (!handle.isValid()) {
+      edm::LogWarning("L1TCaloAnalyzer") << "Missing analyzer input " << source.name;
+      continue;
+    }
+    fillPreIP1Collection(*handle, source);
+  }
 
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
+  for (const auto& source : gctSources_) {
+    const auto handle = event.getHandle(source.token);
+    if (!handle.isValid()) {
+      edm::LogWarning("L1TCaloAnalyzer") << "Missing analyzer input " << source.name;
+      continue;
+    }
+    fillGCTCollection(*handle, source);
+  }
+}
+
+void L1TCaloAnalyzer::fillPreIP1Collection(const RCTCollection& collection, const RCTSource& source) {
+  for (std::size_t link = 0; link < collection.size(); ++link) {
+    const LinkWord word = collection[link].data();
+    prepareLink("PreIP1", source.name, source.regionIndex, static_cast<int>(link), word);
+    decodePreIP1(word, static_cast<int>(link));
+    linkTree_->Fill();
+  }
+}
+
+void L1TCaloAnalyzer::fillGCTCollection(const GCTCollection& collection, const GCTSource& source) {
+  for (std::size_t link = 0; link < collection.size(); ++link) {
+    const LinkWord word = collection[link].data();
+    prepareLink(source.stage, source.name, source.regionIndex, static_cast<int>(link), word);
+
+    if (source.stage == "PostIP1") {
+      decodePostIP1(word, static_cast<int>(link));
+    } else if (source.stage == "PreIP2") {
+      decodePreIP2(word, static_cast<int>(link));
+    } else if (source.stage == "PostIP2") {
+      decodePostIP2(word, static_cast<int>(link));
+    }
+    linkTree_->Fill();
+  }
+}
 
 #include "L1Trigger/L1CaloPhase2Analyzer/interface/L1TCaloAnalyzer.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -115,17 +166,57 @@ void L1TCaloAnalyzer::analyze( const Event& evt, const EventSetup& es )
         linkOutGT[i]->push_back((*outputGTLinkHandles_[i])[word]);
       }
     }
+    return;
   }
 
   gctsTree->Fill();
  
  }
 
-
-void L1TCaloAnalyzer::endJob() {
+  linkType_ = "ip2_spare_output";
 }
 
-L1TCaloAnalyzer::~L1TCaloAnalyzer(){
+void L1TCaloAnalyzer::appendObject(const std::string& type,
+                                   int index,
+                                   int energy,
+                                   int emEnergy,
+                                   int seedEnergy,
+                                   int eta,
+                                   int phi,
+                                   int hoe,
+                                   int flags,
+                                   int ratio,
+                                   int et5x5,
+                                   int quality,
+                                   int timing,
+                                   int brems,
+                                   int ex,
+                                   int ey,
+                                   int ht) {
+  objectType_.push_back(type);
+  objectIndex_.push_back(index);
+  energy_.push_back(energy);
+  emEnergy_.push_back(emEnergy);
+  seedEnergy_.push_back(seedEnergy);
+  eta_.push_back(eta);
+  phi_.push_back(phi);
+  hoe_.push_back(hoe);
+  flags_.push_back(flags);
+  ratio_.push_back(ratio);
+  et5x5_.push_back(et5x5);
+  quality_.push_back(quality);
+  timing_.push_back(timing);
+  brems_.push_back(brems);
+  ex_.push_back(ex);
+  ey_.push_back(ey);
+  ht_.push_back(ht);
+}
+
+int L1TCaloAnalyzer::signExtend(unsigned int value, unsigned int width) {
+  const unsigned int signBit = 1U << (width - 1U);
+  const unsigned int mask = (1U << width) - 1U;
+  value &= mask;
+  return static_cast<int>((value ^ signBit) - signBit);
 }
 
 }
