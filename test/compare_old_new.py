@@ -7,9 +7,9 @@ import numpy as np
 from pathlib import Path
 import uproot
 
-NEW_PATH = "analyzer_noClusters.root"
-OLD_PATH = "old_analyzer_noClusters.root"
-PLOT_DIR = "plots_noClusters/"
+NEW_PATH = "analyzer.root"
+OLD_PATH = "old_analyzer.root"
+PLOT_DIR = "plots/"
 
 TOWER_DIFF_MIN_ENERGY = 0.5 #min. energy to compare towers
 
@@ -127,6 +127,14 @@ def compare_clusters(old_tree,new_tree):
     #Get top 2 clusters
     new_pt, new_eta, new_phi = top2_clusters(new_pt,new_eta,new_phi)
     old_pt, old_eta, old_phi = top2_clusters(old_pt,old_eta,old_phi)
+
+    print("Old clusters (in eta,phi):")
+    print(f"    {old_pt[:,0]} at {old_eta[:,0]} , {old_phi[:,0]}")
+    print(f"    {old_pt[:,1]} at {old_eta[:,1]} , {old_phi[:,1]}")
+
+    print("New clusters (in eta,phi):")
+    print(f"    {new_pt[:,0]} at {new_eta[:,0]} , {new_phi[:,0]}")
+    print(f"    {new_pt[:,1]} at {new_eta[:,1]} , {new_phi[:,1]}")
 
     new_filt = new_pt > 0
     new_pt = new_pt[new_filt]
@@ -553,7 +561,7 @@ def main():
         if old_max_et is None:
             max_cluster_et = new_max_et
         else:
-            max_cluster_et = max(new_cluster_et,old_cluster_et)
+            max_cluster_et = max(new_max_et,old_max_et)
     plot_clusters(new_tree,True,iEvent=iEvent,max_et=max_cluster_et)
     plot_clusters(old_tree,False,iEvent=iEvent,max_et=max_cluster_et)
 

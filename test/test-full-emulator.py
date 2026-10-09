@@ -33,25 +33,23 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '131X_mcRun4_realistic_v6', '')
 
-# Add HCAL Transcoder
-process.load('SimCalorimetry.HcalTrigPrimProducers.hcaltpdigi_cff')
-process.load('CalibCalorimetry.CaloTPG.CaloTPGTranscoder_cfi')
-
-# Run L1 simulation (necessary to get HGCal towers)
-process.load("L1Trigger.L1CaloTrigger.l1tPhase2RCTEmulatorProducer_cfi")
-process.L1simulation_step = cms.Path(process.l1tPhase2RCTEmulatorProducer)
+# Run CaloL1 sim
+process.load("L1Trigger.L1CaloTrigger.l1tPhase2CaloL1Emulator_cff")
 
 # Run the analyzer
-process.load('L1Trigger.L1CaloPhase2Analyzer.l1TRCTAnalyzer_cfi')
+process.load('L1Trigger.L1CaloPhase2Analyzer.l1TCaloAnalyzer_cfi')
 
-process.RCT = cms.Path( process.l1tPhase2RCTEmulatorProducer*process.l1NtupleProducer )
+process.CaloL1 = cms.Path(
+  process.l1tPhase2CaloL1 *
+  process.l1LinkProducer
+)
 
 # output file
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string('analyzer.root')
+    fileName = cms.string('full_emulator_analyzer.root')
 )
 
-process.schedule = cms.Schedule(process.RCT)
+process.schedule = cms.Schedule(process.CaloL1)
 
 # Multi-threading
 process.options.numberOfThreads=cms.untracked.uint32(8)

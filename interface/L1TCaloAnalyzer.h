@@ -35,116 +35,77 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "TTree.h"
 
+namespace p2CaloAnalyzer {
+
+static constexpr int kOutputLinks = 6;
+static constexpr int kWordsPerLink = 9;
+
 class L1TCaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
-public:
-  explicit L1TCaloAnalyzer(const edm::ParameterSet&);
-  ~L1TCaloAnalyzer() override = default;
 
-  static void fillDescriptions(edm::ConfigurationDescriptions&);
+ public:
+  
+  // Constructor
+  L1TCaloAnalyzer(const edm::ParameterSet& ps);
+  
+  // Destructor
+  virtual ~L1TCaloAnalyzer();
 
-private:
-  using RCTCollection = l1tp2::rctOutputLinkCollection;
-  using GCTCollection = l1tp2::gctOutputLinkCollection;
-  using LinkWord = ap_uint<576>;
+  edm::Service<TFileService> tfs_;
 
-  struct RCTSource {
-    edm::EDGetTokenT<RCTCollection> token;
-    std::string name;
-    int regionIndex;
-  };
+  std::vector<uint64_t>* *linkOutSums = new std::vector<uint64_t>[kOutputLinks];
+  std::vector<uint64_t>* *linkOutGT = new std::vector<uint64_t>[kOutputLinks];
 
-  struct GCTSource {
-    edm::EDGetTokenT<GCTCollection> token;
-    std::string stage;
-    std::string name;
-    int regionIndex;
-  };
+  TTree* gctsTree;
 
-  void beginJob() override;
-  void analyze(const edm::Event&, const edm::EventSetup&) override;
+  int run, lumi, event;
 
-  void fillPreIP1Collection(const RCTCollection&, const RCTSource&);
-  void fillGCTCollection(const GCTCollection&, const GCTSource&);
-  void prepareLink(const std::string& stage,
-                   const std::string& regionName,
-                   int regionIndex,
-                   int linkIndex,
-                   const LinkWord& word);
-  void decodePreIP1(const LinkWord& word, int linkIndex);
-  void decodePostIP1(const LinkWord& word, int linkIndex);
-  void decodePreIP2(const LinkWord& word, int linkIndex);
-  void decodePostIP2(const LinkWord& word, int linkIndex);
+ protected:
+  // Analyze
+  void analyze(const edm::Event& evt, const edm::EventSetup& es);
+  
+  // BeginJob
+  void beginJob(const edm::EventSetup &es);
+  
+  // EndJob
+  void endJob(void);
 
-  void appendObject(const std::string& type,
-                    int index,
-                    int energy = -1,
-                    int emEnergy = -1,
-                    int seedEnergy = -1,
-                    int eta = -999,
-                    int phi = -999,
-                    int hoe = -1,
-                    int flags = -1,
-                    int ratio = -1,
-                    int et5x5 = -1,
-                    int quality = -1,
-                    int timing = -1,
-                    int brems = -1,
-                    int ex = -1,
-                    int ey = -1,
-                    int ht = -1);
+  
+ private:
+  // ----------member data ---------------------------
 
-  static int signExtend(unsigned int value, unsigned int width);
-  static std::string preIP2RouteSource(int linkIndex);
-  static int preIP2RouteLink(int linkIndex);
+  std::array<edm::EDGetTokenT<std::vector<uint64_t>>, kOutputLinks> outputSumsLinkTokens_;
+  std::array<edm::EDGetTokenT<std::vector<uint64_t>>, kOutputLinks> outputGTLinkTokens_;
 
-  std::vector<RCTSource> preIP1Sources_;
-  std::vector<GCTSource> gctSources_;
+  std::array<edm::Handle<std::vector<uint64_t>>, kOutputLinks> outputSumsLinkHandles_;
+  std::array<edm::Handle<std::vector<uint64_t>>, kOutputLinks> outputGTLinkHandles_;
 
-  edm::Service<TFileService> fileService_;
-  TTree* linkTree_{nullptr};
-
-  // Event and link identity.
-  std::uint32_t run_{0};
-  std::uint32_t lumi_{0};
-  std::uint64_t event_{0};
-  std::string stage_;
-  std::string regionName_;
-  int regionIndex_{-1};
-  int linkIndex_{-1};
-  std::string linkType_;
-
-  // Metadata specific to routed/pre-IP1 links.
-  int phiSlot_{-1};
-  int etaSide_{0};
-  int ip1RegionSlot_{-1};
-  int localLinkIndex_{-1};
-  int rctPairIndex_{-1};
-  int rctCollectionIndex_{-1};
-  std::string routeSource_;
-  int routeSourceLink_{-1};
-  bool stSlotTransposed_{false};
-
-  // Raw payload: 18 x 32 bits = 576 bits.
-  std::vector<std::uint32_t> rawWord32_;
-
-  // Aligned decoded-object vectors.  Unused fields are filled with sentinels.
-  std::vector<std::string> objectType_;
-  std::vector<int> objectIndex_;
-  std::vector<int> energy_;
-  std::vector<int> emEnergy_;
-  std::vector<int> seedEnergy_;
-  std::vector<int> eta_;
-  std::vector<int> phi_;
-  std::vector<int> hoe_;
-  std::vector<int> flags_;
-  std::vector<int> ratio_;
-  std::vector<int> et5x5_;
-  std::vector<int> quality_;
-  std::vector<int> timing_;
-  std::vector<int> brems_;
-  std::vector<int> ex_;
-  std::vector<int> ey_;
-  std::vector<int> ht_;
 };
+
+void getIP3OutputClusters(
+  ap_uint<576> Data,
+  std::vector<int>* RCT_seed_pt,
+  std::vector<int>* RCT_pt,
+  std::vector<int>* RCT_eta,
+  std::vector<int>* RCT_phi,
+  std::vector<int>* RCT_et5x5,
+  std::vector<int>* RCT_wps,
+  std::vector<int>* RCT_timing,
+  std::vector<int>* RCT_spike,
+  std::vector<int>* RCT_satur,
+  std::vector<int>* RCT_brems,
+  std::vector<int>* RCT_spare
+);
+
+void getIP3OutputTowers(
+  ap_uint<576> Data,
+  int whichLink,
+  std::vector<int>* RCT_et,
+  std::vector<int>* RCT_eta,
+  std::vector<int>* RCT_phi,
+  std::vector<int>* RCT_hoe,
+  std::vector<int>* RCT_fb
+);
+
+} // namespace p2CaloAnalyzer
 
 #endif
